@@ -10,6 +10,12 @@
             padding: 0;
             height: 100%;
             overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+            color: #333;
+            font-family: Arial, sans-serif;
         }
         #video-display {
             position: absolute;
@@ -18,70 +24,122 @@
             top: 0;
             left: 0;
             z-index: 9999;
+            display: none;
+        }
+        .center-container {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button, select {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover, select:hover {
+            background-color: #0056b3;
+        }
+        #loading {
+            font-size: 18px;
+            color: #333;
+            margin-top: 20px;
+            display: none;
+        }
+        .error-message {
+            color: red;
+            font-size: 18px;
+            display: none;
         }
     </style>
 </head>
 <body>
 
-<div id="video-display" style="display: none;"></div>
+<div id="loading">Loading...</div>
+<div id="video-display"></div>
+<div class="error-message" id="error-message"></div>
+
+<div class="center-container">
+    <input type="text" id="video-id" placeholder="Enter video ID" required aria-label="Video ID">
+    <br><br>
+    <select id="video-domain" aria-label="Video Domain">
+        <option value="vidsrc.in">vidsrc.in</option>
+        <option value="vidsrc.pm">vidsrc.pm</option>
+        <option value="vidsrc.xyz">vidsrc.xyz</option>
+        <option value="vidsrc.net">vidsrc.net</option>
+        <option value="vidsrc.to">vidsrc.to</option>
+        <option value="superembed">superembed</option>
+    </select>
+    <br><br>
+    <button onclick="displayVideo()" aria-label="Display Video">Display Video</button>
+</div>
 
 <script>
-    function displayVideo() {
-        var videoId = document.getElementById('video-id').value;
-        var embedUrl;
-        if (videoId.startsWith("movie")) {
-            embedUrl = `https://vidsrc.to/embed/${videoId}`;
-        } else if (videoId.startsWith("tv")) {
-            var parts = videoId.split("/");
-            if (parts.length === 2) {
-                embedUrl = `https://vidsrc.to/embed/${parts[0]}/${parts[1]}/1`;
-            } else if (parts.length === 3) {
-                embedUrl = `https://vidsrc.to/embed/${parts[0]}/${parts[1]}/${parts[2]}/1`;
-            } else if (parts.length === 4) {
-                embedUrl = `https://vidsrc.to/embed/${parts[0]}/${parts[1]}/${parts[2]}/${parts[3]}`;
-            }
+    // Listen for Enter keypress on the input field
+    document.getElementById('video-id').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            displayVideo();
         }
-        if (embedUrl) {
-            var videoDisplay = document.getElementById('video-display');
-            videoDisplay.innerHTML = `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>`;
-            videoDisplay.style.display = 'block';
+    });
+
+    function constructEmbedUrl(videoId, domain) {
+        if (domain === 'superembed') {
+            return `https://multiembed.mov/directstream.php?video_id=${videoId}`;
         } else {
-            var attempts = [
-                `https://vidsrc.to/embed/movie/${videoId}`,
-                `https://vidsrc.to/embed/tv/${videoId}`,
-                `https://vidsrc.to/embed/tv/${videoId}/1`,
-                `https://vidsrc.to/embed/tv/${videoId}/1/1`
-            ];
-            var index = 0;
-            function tryNextUrl() {
-                if (index < attempts.length) {
-                    var url = attempts[index++];
-                    var xhr = new XMLHttpRequest();
-                    xhr.onreadystatechange = function() {
-                        if (xhr.readyState === XMLHttpRequest.DONE) {
-                            if (xhr.status === 200) {
-                                var videoDisplay = document.getElementById('video-display');
-                                videoDisplay.innerHTML = `<iframe src="${url}" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>`;
-                                videoDisplay.style.display = 'block';
-                            } else {
-                                tryNextUrl();
-                            }
-                        }
-                    };
-                    xhr.open('GET', url, true);
-                    xhr.send();
-                } else {
-                    alert("Unable to find a valid video ID!");
-                }
-            }
-            tryNextUrl();
+            return `https://${domain}/embed/${videoId}`;
         }
     }
-</script>
 
-<input type="text" id="video-id" placeholder="Enter video ID" required>
-<br><br>
-<button onclick="displayVideo()">Display Video</button>
+    function displayVideo() {
+        const videoId = document.getElementById('video-id').value.trim();
+        const domain = document.getElementById('video-domain').value;
+        const videoDisplay = document.getElementById('video-display');
+        const loadingIndicator = document.getElementById('loading');
+        const errorMessage = document.getElementById('error-message');
+
+        if (!videoId) {
+            showError("Please enter a valid video ID.");
+            return;
+        }
+
+        const embedUrl = constructEmbedUrl(videoId, domain);
+
+        // Show loading indicator and clear any previous error
+        loadingIndicator.style.display = 'block';
+        errorMessage.style.display = 'none';
+
+        // Display the video iframe
+        videoDisplay.innerHTML = `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allowfullscreen sandbox="allow-same-origin allow-scripts"></iframe>`;
+        videoDisplay.style.display = 'block';
+
+        // Handle iframe load and error events
+        const iframe = videoDisplay.querySelector('iframe');
+        iframe.onload = () => (loadingIndicator.style.display = 'none');
+        iframe.onerror = () => showError("Failed to load the video. Please check the video ID or domain.");
+    }
+
+    function showError(message) {
+        const errorMessage = document.getElementById('error-message');
+        errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
+        document.getElementById('video-display').style.display = 'none';
+        document.getElementById('loading').style.display = 'none';
+    }
+</script>
 
 </body>
 </html>
