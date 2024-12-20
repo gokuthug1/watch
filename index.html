@@ -68,96 +68,58 @@
     </style>
 </head>
 <body>
-
-<div id="loading">Loading...</div>
-<div id="video-display"></div>
-<div class="error-message" id="error-message"></div>
-
-<div class="center-container">
-    <input type="text" id="video-id" placeholder="Enter ID" required aria-label="Video ID or Anime Name">
-    <br><br>
-    <select id="video-domain" aria-label="Video Domain">
-        <option value="vidsrc.in">vidsrc.in</option>
-        <option value="vidsrc.pm">vidsrc.pm</option>
-        <option value="vidsrc.xyz">vidsrc.xyz</option>
-        <option value="vidsrc.net">vidsrc.net</option>
-        <option value="vidsrc.icu">vidsrc.icu</option>
-        <option value="superembed">superembed</option>
-        <option value="anime">Anime</option>
-        <option value="pro">Pro</option>
-        <option value="anime2">Anime2</option>
-    </select>
-    <br><br>
-    <button onclick="displayVideo()" aria-label="Display Video">Display Video</button>
-</div>
-
-<script>
-    document.getElementById('video-id').addEventListener('keydown', function(event) {
-        if (event.key === 'Enter') {
-            displayVideo();
-        }
-    });
-
-    function constructEmbedUrl(videoId, domain) {
-        if (domain === 'superembed') {
-            return `https://multiembed.mov/directstream.php?video_id=${videoId}`;
-        } else if (domain === 'anime') {
-            return `https://2anime.xyz/embed/${videoId}`;
-        } else if (domain === 'anime2') {
-            return `https://vidsrc.icu/embed/anime/${videoId}/`; // Anime2 vidsrc.icu
-        } else if (domain === 'vidsrc.icu') {
-            return `https://vidsrc.icu/embed/movie/${videoId}`;
-        } else if (domain === 'pro') {
-            return `https://embed.su/embed/movie/${videoId}`;
-        } else {
-            return `https://${domain}/embed/${videoId}`;
-        }
-    }
-
-    function tryProVersion(videoId) {
-        var videoDisplay = document.getElementById('video-display');
-        var loadingIndicator = document.getElementById('loading');
-        var embedUrl = `https://embed.su/embed/movie/${videoId}`;
-
-        videoDisplay.innerHTML = `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
-        videoDisplay.style.display = 'block';
-
-        var iframe = videoDisplay.querySelector('iframe');
-
-        iframe.onload = function() {
-            loadingIndicator.style.display = 'none';
-        };
-
-        iframe.onerror = function() {
-            embedUrl = `https://embed.su/embed/tv/${videoId}/1/1`;
-            videoDisplay.innerHTML = `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
-            iframe = videoDisplay.querySelector('iframe');
-            iframe.onload = function() {
-                loadingIndicator.style.display = 'none';
+    <div id="loading">Loading...</div>
+    <div id="video-display"></div>
+    <div class="error-message" id="error-message"></div>
+    <div class="center-container">
+        <input type="text" id="video-id" placeholder="Enter ID" required aria-label="Video ID or Anime Name">
+        <br><br>
+        <select id="video-domain" aria-label="Video Domain">
+            <option value="vidsrc.in">vidsrc.in</option>
+            <option value="vidsrc.pm">vidsrc.pm</option>
+            <option value="vidsrc.xyz">vidsrc.xyz</option>
+            <option value="vidsrc.net">vidsrc.net</option>
+            <option value="vidsrc.icu">vidsrc.icu</option>
+            <option value="superembed">superembed</option>
+            <option value="anime">Anime</option>
+            <option value="pro">Pro</option>
+            <option value="anime2">Anime2</option>
+        </select>
+        <br><br>
+        <button onclick="displayVideo()" aria-label="Display Video">Display Video</button>
+    </div>
+    <script>
+        function constructEmbedUrl(videoId, domain) {
+            const domains = {
+                superembed: `https://multiembed.mov/directstream.php?video_id=${videoId}`,
+                anime: `https://2anime.xyz/embed/${videoId}`,
+                anime2: `https://vidsrc.icu/embed/anime/${videoId}/`,
+                pro: `https://embed.su/embed/movie/${videoId}`,
             };
-            iframe.onerror = function() {
-                showError("Failed to load the Pro version video. Check the TMDB ID and try again.");
-            };
-        };
-    }
-
-    function displayVideo() {
-        var videoId = document.getElementById('video-id').value.trim();
-        var domain = document.getElementById('video-domain').value;
-        var embedUrl;
-
-        if (videoId === "") {
-            showError("Please enter a valid TMDB ID or Anime Name.");
-            return;
+            return domains[domain] || `https://${domain}/embed/${videoId}`;
         }
 
-        if (domain === 'pro') {
-            tryProVersion(videoId);
-        } else {
-            embedUrl = constructEmbedUrl(videoId, domain);
-            var videoDisplay = document.getElementById('video-display');
-            var loadingIndicator = document.getElementById('loading');
-            var errorMessage = document.getElementById('error-message');
+        function showError(message) {
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            document.getElementById('video-display').style.display = 'none';
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function displayVideo() {
+            const videoId = document.getElementById('video-id').value.trim();
+            const domain = document.getElementById('video-domain').value;
+            const videoDisplay = document.getElementById('video-display');
+            const loadingIndicator = document.getElementById('loading');
+            const errorMessage = document.getElementById('error-message');
+
+            if (!videoId) {
+                showError("Please enter a valid TMDB ID or Anime Name.");
+                return;
+            }
+
+            const embedUrl = constructEmbedUrl(videoId, domain);
 
             loadingIndicator.style.display = 'block';
             errorMessage.style.display = 'none';
@@ -165,24 +127,10 @@
             videoDisplay.innerHTML = `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
             videoDisplay.style.display = 'block';
 
-            var iframe = videoDisplay.querySelector('iframe');
-            iframe.onload = function() {
-                loadingIndicator.style.display = 'none';
-            };
-
-            iframe.onerror = function() {
-                showError("Failed to load the video. Please check the video ID or domain.");
-            };
+            const iframe = videoDisplay.querySelector('iframe');
+            iframe.onload = () => (loadingIndicator.style.display = 'none');
+            iframe.onerror = () => showError("Failed to load the video. Please check the video ID or domain.");
         }
-    }
-
-    function showError(message) {
-        var errorMessage = document.getElementById('error-message');
-        errorMessage.textContent = message;
-        errorMessage.style.display = 'block';
-        document.getElementById('video-display').style.display = 'none';
-        document.getElementById('loading').style.display = 'none';
-    }
-</script>
+    </script>
 </body>
 </html>
