@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -69,7 +68,6 @@
     </style>
 </head>
 <body>
-
 <div id="loading">Loading...</div>
 <div id="video-display"></div>
 <div class="error-message" id="error-message"></div>
@@ -88,7 +86,6 @@
     <br><br>
     <button onclick="displayVideo()" aria-label="Display Video">Display Video</button>
 </div>
-
 <script>
     document.getElementById('video-id').addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
@@ -104,6 +101,23 @@
         }
     }
 
+    function constructEmbedUrlWithAlternatives(videoId, domain) {
+        const alternatives = ['embed', 'embed/tv', 'embed/movie'];
+        for (let i = 0; i < alternatives.length; i++) {
+            let embedUrl = `https://${domain}/${alternatives[i]}/${videoId}`;
+            if (isValidEmbedUrl(embedUrl)) {
+                return embedUrl;
+            }
+        }
+        return null; // Return null if no valid URL was found
+    }
+
+    function isValidEmbedUrl(url) {
+        // For this example, simulate URL validation by checking if it exists
+        // In a real application, you'd probably want to use something like a fetch request to test if the URL returns a valid response.
+        return true;  // Assume all URLs are valid for now
+    }
+
     function displayVideo() {
         var videoId = document.getElementById('video-id').value.trim();
         var domain = document.getElementById('video-domain').value;
@@ -114,7 +128,12 @@
             return;
         }
 
-        embedUrl = constructEmbedUrl(videoId, domain);
+        embedUrl = constructEmbedUrlWithAlternatives(videoId, domain);
+        if (!embedUrl) {
+            showError("Failed to find a valid video URL.");
+            return;
+        }
+
         var videoDisplay = document.getElementById('video-display');
         var loadingIndicator = document.getElementById('loading');
         var errorMessage = document.getElementById('error-message');
@@ -147,6 +166,5 @@
         document.getElementById('loading').style.display = 'none';
     }
 </script>
-
 </body>
 </html>
