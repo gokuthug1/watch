@@ -13,8 +13,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: #f0f0f0; /* Ensure good contrast */
-            color: #333; /* Text color for readability */
+            background-color: #f0f0f0;
+            color: #333;
             font-family: Arial, sans-serif;
         }
         #video-display {
@@ -58,7 +58,7 @@
             font-size: 18px;
             color: #333;
             margin-top: 20px;
-            display: none; /* Hide initially */
+            display: none;
         }
         .error-message {
             color: red;
@@ -68,103 +68,155 @@
     </style>
 </head>
 <body>
+
 <div id="loading">Loading...</div>
 <div id="video-display"></div>
 <div class="error-message" id="error-message"></div>
 
 <div class="center-container">
-    <input type="text" id="video-id" placeholder="Enter video ID" required aria-label="Video ID">
+    <input type="text" id="video-id" placeholder="Enter TMDB ID or Anime Name" required>
     <br><br>
-    <select id="video-domain" aria-label="Video Domain">
+    <select id="video-domain" onchange="toggleVideoType()">
         <option value="vidsrc.in">vidsrc.in</option>
         <option value="vidsrc.pm">vidsrc.pm</option>
         <option value="vidsrc.xyz">vidsrc.xyz</option>
         <option value="vidsrc.net">vidsrc.net</option>
         <option value="vidsrc.icu">vidsrc.icu</option>
         <option value="superembed">superembed</option>
+        <option value="anime">Anime</option>
+        <option value="pro">Pro</option>
     </select>
     <br><br>
-    <button onclick="displayVideo()" aria-label="Display Video">Display Video</button>
+    <select id="video-type" style="display:none;">
+        <option value="movie">Movie</option>
+        <option value="tv">TV</option>
+    </select>
+    <br><br>
+    <button onclick="displayVideo()">Display Video</button>
 </div>
+
 <script>
-    document.getElementById('video-id').addEventListener('keydown', function(event) {
-        if (event.key === 'Enter') {
-            displayVideo();
-        }
-    });
+// Check for stored domain and toggle video-type visibility on page load
+window.onload = function() {
+    var savedDomain = localStorage.getItem('selectedDomain');
+    if (savedDomain) {
+        document.getElementById('video-domain').value = savedDomain;
+        toggleVideoType();
+    }
+};
 
-    function constructEmbedUrl(videoId, domain) {
-        if (domain === 'superembed') {
-            return `https://multiembed.mov/directstream.php?video_id=${videoId}`;
-        } else {
-            return `https://${domain}/embed/${videoId}`;
-        }
+document.getElementById('video-id').addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        displayVideo();
+    }
+});
+
+// Store the selected domain in local storage when the domain changes
+function toggleVideoType() {
+    var domain = document.getElementById('video-domain').value;
+    localStorage.setItem('selectedDomain', domain); // Save the selected domain
+    var videoTypeSelect = document.getElementById('video-type');
+    
+    // Show the Video Type dropdown only for 'Pro' or 'vidsrc.icu'
+    if (domain === 'pro' || domain === 'vidsrc.icu') {
+        videoTypeSelect.style.display = 'inline-block';
+    } else {
+        videoTypeSelect.style.display = 'none';
+    }
+}
+
+function displayVideo() {
+    var videoId = document.getElementById('video-id').value.trim();
+    var domain = document.getElementById('video-domain').value;
+    var videoType = document.getElementById('video-type').value;
+    var videoDisplay = document.getElementById('video-display');
+    var loadingIndicator = document.getElementById('loading');
+    var errorMessage = document.getElementById('error-message');
+    
+    // Clear previous error and video display
+    errorMessage.style.display = 'none';
+    videoDisplay.style.display = 'none';
+    loadingIndicator.style.display = 'block';
+
+    if (!videoId) {
+        showError("Please enter a valid Video ID or Anime Name.");
+        return;
     }
 
-    function constructEmbedUrlWithAlternatives(videoId, domain) {
-        const alternatives = ['embed', 'embed/tv', 'embed/movie'];
-        for (let i = 0; i < alternatives.length; i++) {
-            let embedUrl = `https://${domain}/${alternatives[i]}/${videoId}`;
-            if (isValidEmbedUrl(embedUrl)) {
-                return embedUrl;
-            }
-        }
-        return null; // Return null if no valid URL was found
+    // If Pro is selected, try the Pro version logic
+    if (domain === 'pro') {
+        tryProVersion(videoId, videoType);
+        return; // Stop further execution to prevent conflicting URL generation
     }
 
-    function isValidEmbedUrl(url) {
-        // For this example, simulate URL validation by checking if it exists
-        // In a real application, you'd probably want to use something like a fetch request to test if the URL returns a valid response.
-        return true;  // Assume all URLs are valid for now
-    }
-
-    function displayVideo() {
-        var videoId = document.getElementById('video-id').value.trim();
-        var domain = document.getElementById('video-domain').value;
-        var embedUrl;
-
-        if (videoId === "") {
-            showError("Please enter a valid video ID.");
-            return;
-        }
-
-        embedUrl = constructEmbedUrlWithAlternatives(videoId, domain);
-        if (!embedUrl) {
-            showError("Failed to find a valid video URL.");
-            return;
-        }
-
-        var videoDisplay = document.getElementById('video-display');
-        var loadingIndicator = document.getElementById('loading');
-        var errorMessage = document.getElementById('error-message');
-
-        // Show loading indicator
-        loadingIndicator.style.display = 'block';
-        errorMessage.style.display = 'none'; // Hide error message
-
-        // Display the video iframe
-        videoDisplay.innerHTML = `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allowfullscreen sandbox="allow-same-origin allow-scripts"></iframe>`;
+    // Construct embed URL based on domain and video type
+    var embedUrl = constructEmbedUrl(videoId, domain, videoType);
+    
+    if (embedUrl) {
+        videoDisplay.innerHTML = `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
         videoDisplay.style.display = 'block';
-
-        // Hide loading indicator once iframe is loaded
         var iframe = videoDisplay.querySelector('iframe');
+
         iframe.onload = function() {
             loadingIndicator.style.display = 'none';
         };
 
-        // Handle iframe load errors
         iframe.onerror = function() {
-            showError("Failed to load the video. Please check the video ID or domain.");
+            showError("Failed to load the video. Please check the Video ID or try a different domain.");
         };
+    } else {
+        showError("Failed to construct embed URL. Please try another domain.");
+    }
+}
+
+function showError(message) {
+    var errorMessage = document.getElementById('error-message');
+    errorMessage.textContent = message;
+    errorMessage.style.display = 'block';
+}
+
+function constructEmbedUrl(videoId, domain, videoType) {
+    if (domain === 'superembed') {
+        return `https://multiembed.mov/directstream.php?video_id=${videoId}`;
+    } else if (domain === 'anime') {
+        return `https://2anime.xyz/embed/${videoId}`;
+    } else if (domain === 'vidsrc.icu') {
+        if (videoType === 'movie') {
+            return `https://vidsrc.icu/embed/movie/${videoId}`;
+        } else {
+            return `https://vidsrc.icu/embed/tv/${videoId}/1/1`;
+        }
+    } else {
+        return `https://${domain}/embed/${videoId}`;
+    }
+}
+
+function tryProVersion(videoId, videoType) {
+    var videoDisplay = document.getElementById('video-display');
+    var loadingIndicator = document.getElementById('loading');
+    
+    // Construct embed URL for Pro based on movie or TV selection
+    var embedUrl = `https://embed.su/embed/${videoType}/${videoId}`;
+    
+    // If TV type, add the "1/1" suffix for Pro TV
+    if (videoType === 'tv') {
+        embedUrl = `https://embed.su/embed/tv/${videoId}/1/1`;
     }
 
-    function showError(message) {
-        var errorMessage = document.getElementById('error-message');
-        errorMessage.textContent = message;
-        errorMessage.style.display = 'block';
-        document.getElementById('video-display').style.display = 'none';
-        document.getElementById('loading').style.display = 'none';
-    }
+    videoDisplay.innerHTML = `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
+    videoDisplay.style.display = 'block';
+
+    var iframe = videoDisplay.querySelector('iframe');
+
+    iframe.onload = function() {
+        loadingIndicator.style.display = 'none';
+    };
+
+    iframe.onerror = function() {
+        showError("Failed to load the video. Please check the Video ID or try a different domain.");
+    };
+}
 </script>
+
 </body>
 </html>
