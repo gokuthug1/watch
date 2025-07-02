@@ -26,6 +26,7 @@
             left: 0;
             z-index: 9999;
             display: none;
+            background-color: black;
         }
         .center-container {
             text-align: center;
@@ -75,9 +76,10 @@
 <div class="error-message" id="error-message"></div>
 
 <div class="center-container">
-    <input type="text" id="video-id" placeholder="Enter video Id" required>
+    <input type="text" id="video-id" placeholder="Enter Movie/TV ID (e.g., tt17048514)" required>
     <br><br>
     <select id="video-domain" onchange="toggleVideoType()">
+        <option value="vidsrc.to">vidsrc.to</option>
         <option value="vidsrc.in">vidsrc.in</option>
         <option value="vidsrc.pm">vidsrc.pm</option>
         <option value="vidsrc.xyz">vidsrc.xyz</option>
@@ -102,8 +104,8 @@ window.onload = function() {
     var savedDomain = localStorage.getItem('selectedDomain');
     if (savedDomain) {
         document.getElementById('video-domain').value = savedDomain;
-        toggleVideoType();
     }
+    toggleVideoType(); // Call this to set initial state
 };
 
 document.getElementById('video-id').addEventListener('keydown', function(event) {
@@ -112,14 +114,14 @@ document.getElementById('video-id').addEventListener('keydown', function(event) 
     }
 });
 
-// Store the selected domain in local storage when the domain changes
+// Store the selected domain and adjust UI accordingly
 function toggleVideoType() {
     var domain = document.getElementById('video-domain').value;
     localStorage.setItem('selectedDomain', domain); // Save the selected domain
     var videoTypeSelect = document.getElementById('video-type');
     
-    // Show the Video Type dropdown only for 'Pro' or 'vidsrc.icu'
-    if (domain === 'pro' || domain === 'vidsrc.icu') {
+    // Show the Video Type dropdown for all 'vidsrc' domains and 'pro'
+    if (domain.startsWith('vidsrc') || domain === 'pro') {
         videoTypeSelect.style.display = 'inline-block';
     } else {
         videoTypeSelect.style.display = 'none';
@@ -136,6 +138,7 @@ function displayVideo() {
     
     // Clear previous error and video display
     errorMessage.style.display = 'none';
+    videoDisplay.innerHTML = ''; // Clear previous iframe
     videoDisplay.style.display = 'none';
     loadingIndicator.style.display = 'block';
 
@@ -143,13 +146,7 @@ function displayVideo() {
         showError("Please enter a valid Video ID or Anime Name.");
         return;
     }
-
-    // If Pro is selected, try the Pro version logic
-    if (domain === 'pro') {
-        tryProVersion(videoId, videoType);
-        return; // Stop further execution to prevent conflicting URL generation
-    }
-
+    
     // Construct embed URL based on domain and video type
     var embedUrl = constructEmbedUrl(videoId, domain, videoType);
     
@@ -164,16 +161,21 @@ function displayVideo() {
 
         iframe.onerror = function() {
             showError("Failed to load the video. Please check the Video ID or try a different domain.");
+            videoDisplay.style.display = 'none';
+            loadingIndicator.style.display = 'none';
         };
     } else {
-        showError("Failed to construct embed URL. Please try another domain.");
+        showError("Invalid selection. Could not construct the video URL.");
+        loadingIndicator.style.display = 'none';
     }
 }
 
 function showError(message) {
     var errorMessage = document.getElementById('error-message');
+    var loadingIndicator = document.getElementById('loading');
     errorMessage.textContent = message;
     errorMessage.style.display = 'block';
+    loadingIndicator.style.display = 'none';
 }
 
 function constructEmbedUrl(videoId, domain, videoType) {
@@ -181,42 +183,26 @@ function constructEmbedUrl(videoId, domain, videoType) {
         return `https://multiembed.mov/directstream.php?video_id=${videoId}`;
     } else if (domain === 'anime') {
         return `https://2anime.xyz/embed/${videoId}`;
-    } else if (domain === 'vidsrc.icu') {
+    } else if (domain === 'pro') {
         if (videoType === 'movie') {
-            return `https://vidsrc.icu/embed/movie/${videoId}`;
-        } else {
-            return `https://vidsrc.icu/embed/tv/${videoId}/1/1`;
+            return `https://embed.su/embed/movie/${videoId}`;
+        } else { // tv
+            return `https://embed.su/embed/tv/${videoId}/1/1`;
         }
-    } else {
-        return `https://${domain}/embed/${videoId}`;
+    } else if (domain.startsWith('vidsrc')) {
+        // This block handles all vidsrc domains like vidsrc.to, vidsrc.net, vidsrc.icu etc.
+        let baseUrl = `https://${domain}/embed`;
+        if (videoType === 'movie') {
+            return `${baseUrl}/movie/${videoId}`;
+        } else { // tv
+            // Default to S1/E1 for TV shows
+            let suffix = (domain === 'vidsrc.icu' || domain === 'pro') ? '/1/1' : '';
+            return `${baseUrl}/tv/${videoId}${suffix}`;
+        }
     }
+    return null; // Return null if no URL could be constructed
 }
 
-function tryProVersion(videoId, videoType) {
-    var videoDisplay = document.getElementById('video-display');
-    var loadingIndicator = document.getElementById('loading');
-    
-    // Construct embed URL for Pro based on movie or TV selection
-    var embedUrl = `https://embed.su/embed/${videoType}/${videoId}`;
-    
-    // If TV type, add the "1/1" suffix for Pro TV
-    if (videoType === 'tv') {
-        embedUrl = `https://embed.su/embed/tv/${videoId}/1/1`;
-    }
-
-    videoDisplay.innerHTML = `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
-    videoDisplay.style.display = 'block';
-
-    var iframe = videoDisplay.querySelector('iframe');
-
-    iframe.onload = function() {
-        loadingIndicator.style.display = 'none';
-    };
-
-    iframe.onerror = function() {
-        showError("Failed to load the video. Please check the Video ID or try a different domain.");
-    };
-}
 </script>
 </body>
 </html>
