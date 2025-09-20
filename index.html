@@ -3,22 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Display</title>
-    <link rel="icon" href="v.png" type="image/png">
+    <title>Video Player Gateway</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>▶️</text></svg>">
+    
     <style>
+        /* CSS Variables for easy theming */
+        :root {
+            --background-color: #f0f2f5;
+            --container-bg: #ffffff;
+            --text-color: #333;
+            --primary-color: #007bff;
+            --primary-hover-color: #0056b3;
+            --border-color: #ccc;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --error-color: #d93025;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* General Body and Layout Styles */
         body, html {
             margin: 0;
             padding: 0;
             height: 100%;
             overflow: hidden;
+            font-family: var(--font-family);
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        /* Main container for the form */
+        .main-content {
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: #f0f0f0;
-            color: #333;
-            font-family: Arial, sans-serif;
+            height: 100%;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
         }
-        #video-display {
+
+        .center-container {
+            text-align: center;
+            background: var(--container-bg);
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        h1 {
+            margin-top: 0;
+            margin-bottom: 24px;
+            font-size: 24px;
+            color: var(--text-color);
+        }
+
+        /* Form elements styling */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-align: left;
+        }
+        
+        input[type="text"], select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="text"]:focus-visible, select:focus-visible {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover-color);
+        }
+        
+        /* Video Display Overlay */
+        #video-display-container {
             position: absolute;
             width: 100%;
             height: 100%;
@@ -26,183 +113,224 @@
             left: 0;
             z-index: 9999;
             display: none;
-            background-color: black;
+            background-color: #000;
         }
-        .center-container {
-            text-align: center;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        input[type="text"] {
-            width: 80%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-            margin-top: 10px;
-        }
-        button, select {
-            padding: 10px 20px;
+
+        #video-display-container iframe {
+            width: 100%;
+            height: 100%;
             border: none;
-            border-radius: 5px;
-            background-color: #007BFF;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 10px;
         }
-        button:hover, select:hover {
-            background-color: #0056b3;
-        }
-        #loading {
+
+        /* Status and Error Messages */
+        .status-message {
             font-size: 18px;
-            color: #333;
             margin-top: 20px;
             display: none;
+            font-weight: 500;
         }
-        .error-message {
-            color: red;
-            font-size: 18px;
-            display: none;
+        
+        #loading {
+            color: var(--text-color);
+        }
+
+        #error-message {
+            color: var(--error-color);
         }
     </style>
 </head>
 <body>
 
-<div id="loading">Loading...</div>
-<div id="video-display"></div>
-<div class="error-message" id="error-message"></div>
+    <main class="main-content">
+        <div class="center-container">
+            <h1>Video Player Gateway</h1>
+            <form id="video-form">
+                <div class="form-group">
+                    <label for="video-id-input">Movie/TV ID or Anime Name</label>
+                    <input type="text" id="video-id-input" placeholder="e.g., tt17048514" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="video-domain-select">Source Domain</label>
+                    <select id="video-domain-select">
+                        <option value="vidsrc.to">vidsrc.to</option>
+                        <option value="vidsrc.in">vidsrc.in</option>
+                        <option value="vidsrc.pm">vidsrc.pm</option>
+                        <option value="vidsrc.xyz">vidsrc.xyz</option>
+                        <option value="vidsrc.net">vidsrc.net</option>
+                        <option value="vidsrc.icu">vidsrc.icu</option>
+                        <option value="superembed">superembed.com</option>
+                        <option value="anime">2anime.xyz (Name Search)</option>
+                        <option value="pro">embed.su (Pro)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="video-type-group">
+                    <label for="video-type-select">Content Type</label>
+                    <select id="video-type-select">
+                        <option value="movie">Movie</option>
+                        <option value="tv">TV</option>
+                    </select>
+                </div>
+                
+                <button type="submit">Display Video</button>
+            </form>
 
-<div class="center-container">
-    <input type="text" id="video-id" placeholder="Enter Movie/TV ID (e.g., tt17048514)" required>
-    <br><br>
-    <select id="video-domain" onchange="toggleVideoType()">
-        <option value="vidsrc.to">vidsrc.to</option>
-        <option value="vidsrc.in">vidsrc.in</option>
-        <option value="vidsrc.pm">vidsrc.pm</option>
-        <option value="vidsrc.xyz">vidsrc.xyz</option>
-        <option value="vidsrc.net">vidsrc.net</option>
-        <option value="vidsrc.icu">vidsrc.icu</option>
-        <option value="superembed">superembed</option>
-        <option value="anime">Anime</option>
-        <option value="pro">Pro</option>
-    </select>
-    <br><br>
-    <select id="video-type" style="display:none;">
-        <option value="movie">Movie</option>
-        <option value="tv">TV</option>
-    </select>
-    <br><br>
-    <button onclick="displayVideo()">Display Video</button>
-</div>
+            <div id="loading" class="status-message">Loading...</div>
+            <div id="error-message" class="status-message"></div>
+        </div>
+    </main>
 
-<script>
-// Check for stored domain and toggle video-type visibility on page load
-window.onload = function() {
-    var savedDomain = localStorage.getItem('selectedDomain');
-    if (savedDomain) {
-        document.getElementById('video-domain').value = savedDomain;
-    }
-    toggleVideoType(); // Call this to set initial state
-};
+    <div id="video-display-container"></div>
 
-document.getElementById('video-id').addEventListener('keydown', function(event) {
-    if (event.key === 'Enter') {
-        displayVideo();
-    }
-});
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURATION ---
+            // Data-driven approach: defines URL patterns and behavior for each source.
+            // This makes adding or modifying sources much easier.
+            const EMBED_SOURCES = {
+                'vidsrc.to': { url: 'https://vidsrc.to/embed/{type}/{id}', needsType: true },
+                'vidsrc.in': { url: 'https://vidsrc.in/embed/{type}/{id}', needsType: true },
+                'vidsrc.pm': { url: 'https://vidsrc.pm/embed/{type}/{id}', needsType: true },
+                'vidsrc.xyz': { url: 'https://vidsrc.xyz/embed/{type}/{id}', needsType: true },
+                'vidsrc.net': { url: 'https://vidsrc.net/embed/{type}/{id}', needsType: true },
+                'vidsrc.icu': { url: 'https://vidsrc.icu/embed/{type}/{id}/1-1', needsType: true },
+                'superembed': { url: 'https://multiembed.mov/directstream.php?video_id={id}', needsType: false },
+                'anime': { url: 'https://2anime.xyz/embed/{id}', needsType: false },
+                'pro': { url: 'https://embed.su/embed/{type}/{id}', needsType: true, tvSuffix: '/1-1' }
+            };
 
-// Store the selected domain and adjust UI accordingly
-function toggleVideoType() {
-    var domain = document.getElementById('video-domain').value;
-    localStorage.setItem('selectedDomain', domain); // Save the selected domain
-    var videoTypeSelect = document.getElementById('video-type');
-    
-    // Show the Video Type dropdown for all 'vidsrc' domains and 'pro'
-    if (domain.startsWith('vidsrc') || domain === 'pro') {
-        videoTypeSelect.style.display = 'inline-block';
-    } else {
-        videoTypeSelect.style.display = 'none';
-    }
-}
+            // --- DOM ELEMENT REFERENCES ---
+            const videoForm = document.getElementById('video-form');
+            const idInput = document.getElementById('video-id-input');
+            const domainSelect = document.getElementById('video-domain-select');
+            const typeGroup = document.getElementById('video-type-group');
+            const typeSelect = document.getElementById('video-type-select');
+            const videoDisplayContainer = document.getElementById('video-display-container');
+            const loadingIndicator = document.getElementById('loading');
+            const errorMessage = document.getElementById('error-message');
 
-function displayVideo() {
-    var videoId = document.getElementById('video-id').value.trim();
-    var domain = document.getElementById('video-domain').value;
-    var videoType = document.getElementById('video-type').value;
-    var videoDisplay = document.getElementById('video-display');
-    var loadingIndicator = document.getElementById('loading');
-    var errorMessage = document.getElementById('error-message');
-    
-    // Clear previous error and video display
-    errorMessage.style.display = 'none';
-    videoDisplay.innerHTML = ''; // Clear previous iframe
-    videoDisplay.style.display = 'none';
-    loadingIndicator.style.display = 'block';
+            // --- FUNCTIONS ---
+            
+            /**
+             * Updates the visibility of the "Content Type" dropdown based on the selected domain.
+             */
+            const updateUiForDomain = () => {
+                const selectedDomain = domainSelect.value;
+                const source = EMBED_SOURCES[selectedDomain];
+                
+                if (source && source.needsType) {
+                    typeGroup.style.display = 'block';
+                } else {
+                    typeGroup.style.display = 'none';
+                }
+                
+                // Save the user's choice for next visit
+                localStorage.setItem('selectedDomain', selectedDomain);
+            };
 
-    if (!videoId) {
-        showError("Please enter a valid Video ID or Anime Name.");
-        return;
-    }
-    
-    // Construct embed URL based on domain and video type
-    var embedUrl = constructEmbedUrl(videoId, domain, videoType);
-    
-    if (embedUrl) {
-        videoDisplay.innerHTML = `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
-        videoDisplay.style.display = 'block';
-        var iframe = videoDisplay.querySelector('iframe');
+            /**
+             * Displays a status message (error or loading).
+             * @param {string} type - 'error' or 'loading'
+             * @param {string} message - The message text to display.
+             */
+            const showStatus = (type, message) => {
+                // Hide all status messages first
+                loadingIndicator.style.display = 'none';
+                errorMessage.style.display = 'none';
+                
+                if (type === 'error') {
+                    errorMessage.textContent = message;
+                    errorMessage.style.display = 'block';
+                } else if (type === 'loading') {
+                    loadingIndicator.textContent = message;
+                    loadingIndicator.style.display = 'block';
+                }
+            };
 
-        iframe.onload = function() {
-            loadingIndicator.style.display = 'none';
-        };
+            /**
+             * Constructs the final embed URL based on user selections.
+             * @returns {string|null} The constructed URL or null if invalid.
+             */
+            const constructEmbedUrl = () => {
+                const videoId = idInput.value.trim();
+                const domain = domainSelect.value;
+                const type = typeSelect.value;
+                const source = EMBED_SOURCES[domain];
 
-        iframe.onerror = function() {
-            showError("Failed to load the video. Please check the Video ID or try a different domain.");
-            videoDisplay.style.display = 'none';
-            loadingIndicator.style.display = 'none';
-        };
-    } else {
-        showError("Invalid selection. Could not construct the video URL.");
-        loadingIndicator.style.display = 'none';
-    }
-}
+                if (!source) return null;
 
-function showError(message) {
-    var errorMessage = document.getElementById('error-message');
-    var loadingIndicator = document.getElementById('loading');
-    errorMessage.textContent = message;
-    errorMessage.style.display = 'block';
-    loadingIndicator.style.display = 'none';
-}
+                let url = source.url.replace('{id}', encodeURIComponent(videoId));
+                
+                if (source.needsType) {
+                    url = url.replace('{type}', type);
+                    if (type === 'tv' && source.tvSuffix) {
+                        url += source.tvSuffix;
+                    }
+                }
+                
+                return url;
+            };
 
-function constructEmbedUrl(videoId, domain, videoType) {
-    if (domain === 'superembed') {
-        return `https://multiembed.mov/directstream.php?video_id=${videoId}`;
-    } else if (domain === 'anime') {
-        return `https://2anime.xyz/embed/${videoId}`;
-    } else if (domain === 'pro') {
-        if (videoType === 'movie') {
-            return `https://embed.su/embed/movie/${videoId}`;
-        } else { // tv
-            return `https://embed.su/embed/tv/${videoId}/1/1`;
-        }
-    } else if (domain.startsWith('vidsrc')) {
-        // This block handles all vidsrc domains like vidsrc.to, vidsrc.net, vidsrc.icu etc.
-        let baseUrl = `https://${domain}/embed`;
-        if (videoType === 'movie') {
-            return `${baseUrl}/movie/${videoId}`;
-        } else { // tv
-            // Default to S1/E1 for TV shows
-            let suffix = (domain === 'vidsrc.icu' || domain === 'pro') ? '/1/1' : '';
-            return `${baseUrl}/tv/${videoId}${suffix}`;
-        }
-    }
-    return null; // Return null if no URL could be constructed
-}
+            /**
+             * Main function to validate input and display the video.
+             * @param {Event} event - The form submission event.
+             */
+            const handleFormSubmit = (event) => {
+                event.preventDefault(); // Prevent actual form submission
+                
+                const videoId = idInput.value.trim();
+                if (!videoId) {
+                    showStatus('error', 'Please enter a valid Video ID or Anime Name.');
+                    return;
+                }
+                
+                // Clear previous state
+                showStatus('loading', 'Loading video...');
+                videoDisplayContainer.innerHTML = '';
+                videoDisplayContainer.style.display = 'none';
 
-</script>
+                const embedUrl = constructEmbedUrl();
+
+                if (!embedUrl) {
+                    showStatus('error', 'Invalid source selection. Could not construct the video URL.');
+                    return;
+                }
+                
+                const iframe = document.createElement('iframe');
+                iframe.src = embedUrl;
+                iframe.setAttribute('allowfullscreen', '');
+                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
+
+                iframe.onload = () => {
+                    loadingIndicator.style.display = 'none'; // Hide loading only on success
+                };
+
+                iframe.onerror = () => {
+                    showStatus('error', 'Failed to load video. Check the ID or try another source.');
+                    videoDisplayContainer.style.display = 'none';
+                };
+                
+                videoDisplayContainer.appendChild(iframe);
+                videoDisplayContainer.style.display = 'block';
+            };
+
+
+            // --- INITIALIZATION ---
+
+            // Restore last selected domain from localStorage
+            const savedDomain = localStorage.getItem('selectedDomain');
+            if (savedDomain && domainSelect.querySelector(`option[value="${savedDomain}"]`)) {
+                domainSelect.value = savedDomain;
+            }
+
+            // Set the initial UI state based on the selected (or default) domain
+            updateUiForDomain();
+
+            // --- EVENT LISTENERS ---
+            domainSelect.addEventListener('change', updateUiForDomain);
+            videoForm.addEventListener('submit', handleFormSubmit);
+        });
+    </script>
 </body>
 </html>
