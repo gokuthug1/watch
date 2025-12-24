@@ -2,8 +2,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Player Gateway</title>
-    <!-- Icon changed to v.png -->
-    <link rel="icon" href="v.png">
+    <link rel="icon" href="v.png" type="image/png">
     
     <style>
         /* CSS Variables for easy theming */
@@ -70,7 +69,7 @@
             text-align: left;
         }
         
-        input[type="text"], select {
+        input[type="text"], input[type="number"], select {
             width: 100%;
             padding: 12px;
             border: 1px solid var(--border-color);
@@ -80,10 +79,27 @@
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        input[type="text"]:focus-visible, select:focus-visible {
+        input[type="text"]:focus-visible, input[type="number"]:focus-visible, select:focus-visible {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+        }
+        
+        /* Layout for Season/Episode inputs */
+        .row-group {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .row-group .half-width {
+            flex: 1;
+        }
+
+        /* Disabled state styling */
+        select:disabled, input:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+            color: #6c757d;
         }
 
         button {
@@ -145,36 +161,36 @@
             <h1>Video Player Gateway</h1>
             <form id="video-form">
                 <div class="form-group">
-                    <label for="video-id-input">Movie/TV ID (IMDB or TMDB)</label>
-                    <input type="text" id="video-id-input" placeholder="e.g., tt17048514 or 385687" required="">
-                </div>
-                
-                <div class="form-group">
-                    <label for="video-domain-select">Source Domain</label>
+                    <label for="video-domain-select">Source</label>
                     <select id="video-domain-select">
-                        <!-- Updated Vidsrc Domains -->
-                        <option value="vidsrcme.ru">vidsrcme.ru</option>
-                        <option value="vidsrcme.su">vidsrcme.su</option>
-                        <option value="vidsrc-me.ru">vidsrc-me.ru</option>
-                        <option value="vidsrc-me.su">vidsrc-me.su</option>
-                        <option value="vidsrc-embed.ru">vidsrc-embed.ru</option>
-                        <option value="vidsrc-embed.su">vidsrc-embed.su</option>
-                        <option value="vsrc.su">vsrc.su</option>
-                        
-                        <!-- Kept ICU separately -->
-                        <option value="vidsrc.icu">vidsrc.icu</option>
-                        
-                        <!-- Superembed -->
-                        <option value="superembed">superembed.com</option>
+                        <option value="vidfast">VidFast.pro (Movies & TV)</option>
+                        <option value="superembed">Superembed (Movies Only)</option>
                     </select>
                 </div>
-                
-                <div class="form-group" id="video-type-group" style="display: block;">
+
+                <div class="form-group" id="type-group">
                     <label for="video-type-select">Content Type</label>
                     <select id="video-type-select">
                         <option value="movie">Movie</option>
-                        <option value="tv">TV</option>
+                        <option value="tv">TV Show</option>
                     </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="video-id-input" id="id-label">IMDB or TMDB ID</label>
+                    <input type="text" id="video-id-input" placeholder="e.g., tt4052886 or 63174" required="">
+                </div>
+                
+                <!-- Season and Episode Inputs (Hidden for Movies) -->
+                <div class="form-group row-group" id="season-episode-group" style="display: none;">
+                    <div class="half-width">
+                        <label for="season-input">Season</label>
+                        <input type="number" id="season-input" placeholder="1" min="1">
+                    </div>
+                    <div class="half-width">
+                        <label for="episode-input">Episode</label>
+                        <input type="number" id="episode-input" placeholder="1" min="1">
+                    </div>
                 </div>
                 
                 <button type="submit">Display Video</button>
@@ -189,60 +205,63 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- CONFIGURATION ---
-            
-            // Format: https://{domain}/embed/{type}/{id}
-            // Based on doc examples: https://vidsrc-embed.ru/embed/movie/tt5433140
-            const EMBED_SOURCES = {
-                // New Vidsrc Group (Standard format)
-                'vidsrcme.ru':     { url: 'https://vidsrcme.ru/embed/{type}/{id}', needsType: true },
-                'vidsrcme.su':     { url: 'https://vidsrcme.su/embed/{type}/{id}', needsType: true },
-                'vidsrc-me.ru':    { url: 'https://vidsrc-me.ru/embed/{type}/{id}', needsType: true },
-                'vidsrc-me.su':    { url: 'https://vidsrc-me.su/embed/{type}/{id}', needsType: true },
-                'vidsrc-embed.ru': { url: 'https://vidsrc-embed.ru/embed/{type}/{id}', needsType: true },
-                'vidsrc-embed.su': { url: 'https://vidsrc-embed.su/embed/{type}/{id}', needsType: true },
-                'vsrc.su':         { url: 'https://vsrc.su/embed/{type}/{id}', needsType: true },
-                
-                // ICU specific (often requires specific suffix for TV to avoid errors)
-                'vidsrc.icu':      { url: 'https://vidsrc.icu/embed/{type}/{id}', needsType: true, tvSuffix: '/1-1' },
-                
-                // Superembed
-                'superembed':      { url: 'https://multiembed.mov/directstream.php?video_id={id}', needsType: false }
-            };
-
             // --- DOM ELEMENT REFERENCES ---
             const videoForm = document.getElementById('video-form');
-            const idInput = document.getElementById('video-id-input');
             const domainSelect = document.getElementById('video-domain-select');
-            const typeGroup = document.getElementById('video-type-group');
             const typeSelect = document.getElementById('video-type-select');
+            const idInput = document.getElementById('video-id-input');
+            const idLabel = document.getElementById('id-label');
+            
+            const seasonEpisodeGroup = document.getElementById('season-episode-group');
+            const seasonInput = document.getElementById('season-input');
+            const episodeInput = document.getElementById('episode-input');
+
             const videoDisplayContainer = document.getElementById('video-display-container');
             const loadingIndicator = document.getElementById('loading');
             const errorMessage = document.getElementById('error-message');
 
-            // --- FUNCTIONS ---
-            
+            // --- UI LOGIC ---
+
             /**
-             * Updates the visibility of the "Content Type" dropdown based on the selected domain.
+             * Updates form fields based on selected Source and Content Type
              */
-            const updateUiForDomain = () => {
-                const selectedDomain = domainSelect.value;
-                const source = EMBED_SOURCES[selectedDomain];
-                
-                if (source && source.needsType) {
-                    typeGroup.style.display = 'block';
-                } else {
-                    typeGroup.style.display = 'none';
+            const updateUiState = () => {
+                const domain = domainSelect.value;
+                let type = typeSelect.value;
+
+                // 1. Handle Source constraints
+                if (domain === 'superembed') {
+                    // Superembed is Movie only
+                    typeSelect.value = 'movie';
+                    typeSelect.disabled = true; // Lock dropdown
+                    
+                    // Hide Season/Episode fields
+                    seasonEpisodeGroup.style.display = 'none';
+                    seasonInput.removeAttribute('required');
+                    episodeInput.removeAttribute('required');
+                } 
+                else {
+                    // VidFast (Default)
+                    typeSelect.disabled = false; // Unlock dropdown
+
+                    // 2. Handle Season/Episode visibility for VidFast
+                    if (typeSelect.value === 'tv') {
+                        seasonEpisodeGroup.style.display = 'flex';
+                        seasonInput.setAttribute('required', 'required');
+                        episodeInput.setAttribute('required', 'required');
+                    } else {
+                        seasonEpisodeGroup.style.display = 'none';
+                        seasonInput.removeAttribute('required');
+                        episodeInput.removeAttribute('required');
+                        // Reset values when switching
+                        seasonInput.value = '';
+                        episodeInput.value = '';
+                    }
                 }
-                
-                // Save the user's choice for next visit
-                localStorage.setItem('selectedDomain', selectedDomain);
             };
 
             /**
-             * Displays a status message (error or loading).
-             * @param {string} type - 'error' or 'loading'
-             * @param {string} message - The message text to display.
+             * Displays status messages.
              */
             const showStatus = (type, message) => {
                 loadingIndicator.style.display = 'none';
@@ -257,70 +276,75 @@
                 }
             };
 
-            /**
-             * Constructs the final embed URL based on user selections.
-             * @returns {string|null} The constructed URL or null if invalid.
-             */
-            const constructEmbedUrl = () => {
-                const videoId = idInput.value.trim();
-                const domain = domainSelect.value;
-                const type = typeSelect.value;
-                const source = EMBED_SOURCES[domain];
+            // --- URL CONSTRUCTION ---
 
-                if (!source) return null;
-
-                let url = source.url.replace('{id}', encodeURIComponent(videoId));
-                
-                if (source.needsType) {
-                    url = url.replace('{type}', type);
-                    
-                    // Specific logic for vidsrc.icu TV shows if a suffix is defined
-                    if (type === 'tv' && source.tvSuffix) {
-                        url += source.tvSuffix;
-                    }
+            const getVidFastUrl = (id, type, season, episode) => {
+                const baseUrl = 'https://vidfast.pro';
+                if (type === 'movie') {
+                    return `${baseUrl}/movie/${id}?autoPlay=true`;
+                } else {
+                    return `${baseUrl}/tv/${id}/${season}/${episode}?autoPlay=true&nextButton=true&autoNext=true`;
                 }
-                
-                return url;
             };
 
-            /**
-             * Main function to validate input and display the video.
-             * @param {Event} event - The form submission event.
-             */
+            const getSuperEmbedUrl = (id) => {
+                return `https://multiembed.mov/directstream.php?video_id=${id}`;
+            };
+
+            // --- FORM SUBMISSION ---
+
             const handleFormSubmit = (event) => {
-                event.preventDefault(); // Prevent actual form submission
+                event.preventDefault();
                 
+                const domain = domainSelect.value;
+                const type = typeSelect.value;
                 const videoId = idInput.value.trim();
+                const season = seasonInput.value.trim();
+                const episode = episodeInput.value.trim();
+
                 if (!videoId) {
-                    showStatus('error', 'Please enter a valid Video ID.');
+                    showStatus('error', 'Please enter a valid ID.');
                     return;
                 }
-                
-                // Clear previous state
+
+                if (domain === 'vidfast' && type === 'tv' && (!season || !episode)) {
+                    showStatus('error', 'Please enter Season and Episode numbers.');
+                    return;
+                }
+
+                // Prepare UI
                 showStatus('loading', 'Loading video...');
                 videoDisplayContainer.innerHTML = '';
                 videoDisplayContainer.style.display = 'none';
 
-                const embedUrl = constructEmbedUrl();
+                let embedUrl = '';
+
+                if (domain === 'vidfast') {
+                    embedUrl = getVidFastUrl(videoId, type, season, episode);
+                } else if (domain === 'superembed') {
+                    embedUrl = getSuperEmbedUrl(videoId);
+                }
 
                 if (!embedUrl) {
-                    showStatus('error', 'Invalid source selection. Could not construct the video URL.');
+                    showStatus('error', 'Could not generate URL.');
                     return;
                 }
-                
-                console.log("Loading URL:", embedUrl); // Debugging aid
+
+                console.log("Loading:", embedUrl);
 
                 const iframe = document.createElement('iframe');
                 iframe.src = embedUrl;
                 iframe.setAttribute('allowfullscreen', '');
-                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
+                
+                iframe.style.width = '100%';
+                iframe.style.height = '100%';
 
                 iframe.onload = () => {
                     loadingIndicator.style.display = 'none';
                 };
 
                 iframe.onerror = () => {
-                    showStatus('error', 'Failed to load video. Check the ID or try another source.');
+                    showStatus('error', 'Failed to load video.');
                     videoDisplayContainer.style.display = 'none';
                 };
                 
@@ -328,21 +352,13 @@
                 videoDisplayContainer.style.display = 'block';
             };
 
-
             // --- INITIALIZATION ---
-
-            // Restore last selected domain from localStorage
-            const savedDomain = localStorage.getItem('selectedDomain');
-            if (savedDomain && domainSelect.querySelector(`option[value="${savedDomain}"]`)) {
-                domainSelect.value = savedDomain;
-            }
-
-            // Set the initial UI state
-            updateUiForDomain();
-
-            // --- EVENT LISTENERS ---
-            domainSelect.addEventListener('change', updateUiForDomain);
+            domainSelect.addEventListener('change', updateUiState);
+            typeSelect.addEventListener('change', updateUiState);
             videoForm.addEventListener('submit', handleFormSubmit);
+            
+            // Set initial state
+            updateUiState();
         });
     </script>
 
