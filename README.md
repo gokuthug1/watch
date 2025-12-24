@@ -24,29 +24,9 @@ To watch a movie or TV show, simply use the IMDb or TMDb ID. You can search for 
      ```
      Here, `27205` is the TMDb ID.
 
-### Anime Example
-
-For anime, the format is slightly different. Here’s the example format for anime:
-AnimeName*-episode-1[-sub|dub] (optional)
-
-#### Example for Anime:
-
-To watch episode 1 of *To Love Ru*, you can use the following format:
-to-love-ru-episode-1
-
-
-If you want to specify whether the episode is in sub or dub (subtitles or dubbed audio), you can add that information:
-
-- For subtitles:
-to-love-ru-episode-1-sub
-
-- For dubbed:
-to-love-ru-episode-1-dub
-
-You can optionally add `-sub` or `-dub` after the episode number, depending on your preference.
-
 ## Important Notes:
 
-- **Superembed Option**: This option is available for movies only. It allows for enhanced embedding functionality, which is not supported for TV shows or anime.
+- **VidFast**: Supports both Movies and TV Shows. For TV Shows, you must enter the **Season** and **Episode** number.
+- **Superembed Option**: This option is available for **movies only**.
 
 Enjoy watching your favorite content!
