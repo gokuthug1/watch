@@ -1,10 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Player Gateway</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>▶️</text></svg>">
+    <!-- Icon changed to v.png -->
+    <link rel="icon" href="v.png">
     
     <style>
         /* CSS Variables for easy theming */
@@ -146,26 +145,31 @@
             <h1>Video Player Gateway</h1>
             <form id="video-form">
                 <div class="form-group">
-                    <label for="video-id-input">Movie/TV ID or Anime Name</label>
-                    <input type="text" id="video-id-input" placeholder="e.g., tt17048514" required>
+                    <label for="video-id-input">Movie/TV ID (IMDB or TMDB)</label>
+                    <input type="text" id="video-id-input" placeholder="e.g., tt17048514 or 385687" required="">
                 </div>
                 
                 <div class="form-group">
                     <label for="video-domain-select">Source Domain</label>
                     <select id="video-domain-select">
-                        <option value="vidsrc.to">vidsrc.to</option>
-                        <option value="vidsrc.in">vidsrc.in</option>
-                        <option value="vidsrc.pm">vidsrc.pm</option>
-                        <option value="vidsrc.xyz">vidsrc.xyz</option>
-                        <option value="vidsrc.net">vidsrc.net</option>
+                        <!-- Updated Vidsrc Domains -->
+                        <option value="vidsrcme.ru">vidsrcme.ru</option>
+                        <option value="vidsrcme.su">vidsrcme.su</option>
+                        <option value="vidsrc-me.ru">vidsrc-me.ru</option>
+                        <option value="vidsrc-me.su">vidsrc-me.su</option>
+                        <option value="vidsrc-embed.ru">vidsrc-embed.ru</option>
+                        <option value="vidsrc-embed.su">vidsrc-embed.su</option>
+                        <option value="vsrc.su">vsrc.su</option>
+                        
+                        <!-- Kept ICU separately -->
                         <option value="vidsrc.icu">vidsrc.icu</option>
+                        
+                        <!-- Superembed -->
                         <option value="superembed">superembed.com</option>
-                        <option value="anime">2anime.xyz (Name Search)</option>
-                        <option value="pro">embed.su (Pro)</option>
                     </select>
                 </div>
                 
-                <div class="form-group" id="video-type-group">
+                <div class="form-group" id="video-type-group" style="display: block;">
                     <label for="video-type-select">Content Type</label>
                     <select id="video-type-select">
                         <option value="movie">Movie</option>
@@ -186,18 +190,24 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- CONFIGURATION ---
-            // Data-driven approach: defines URL patterns and behavior for each source.
-            // This makes adding or modifying sources much easier.
+            
+            // Format: https://{domain}/embed/{type}/{id}
+            // Based on doc examples: https://vidsrc-embed.ru/embed/movie/tt5433140
             const EMBED_SOURCES = {
-                'vidsrc.to': { url: 'https://vidsrc.to/embed/{type}/{id}', needsType: true },
-                'vidsrc.in': { url: 'https://vidsrc.in/embed/{type}/{id}', needsType: true },
-                'vidsrc.pm': { url: 'https://vidsrc.pm/embed/{type}/{id}', needsType: true },
-                'vidsrc.xyz': { url: 'https://vidsrc.xyz/embed/{type}/{id}', needsType: true },
-                'vidsrc.net': { url: 'https://vidsrc.net/embed/{type}/{id}', needsType: true },
-                'vidsrc.icu': { url: 'https://vidsrc.icu/embed/{type}/{id}/1-1', needsType: true },
-                'superembed': { url: 'https://multiembed.mov/directstream.php?video_id={id}', needsType: false },
-                'anime': { url: 'https://2anime.xyz/embed/{id}', needsType: false },
-                'pro': { url: 'https://embed.su/embed/{type}/{id}', needsType: true, tvSuffix: '/1-1' }
+                // New Vidsrc Group (Standard format)
+                'vidsrcme.ru':     { url: 'https://vidsrcme.ru/embed/{type}/{id}', needsType: true },
+                'vidsrcme.su':     { url: 'https://vidsrcme.su/embed/{type}/{id}', needsType: true },
+                'vidsrc-me.ru':    { url: 'https://vidsrc-me.ru/embed/{type}/{id}', needsType: true },
+                'vidsrc-me.su':    { url: 'https://vidsrc-me.su/embed/{type}/{id}', needsType: true },
+                'vidsrc-embed.ru': { url: 'https://vidsrc-embed.ru/embed/{type}/{id}', needsType: true },
+                'vidsrc-embed.su': { url: 'https://vidsrc-embed.su/embed/{type}/{id}', needsType: true },
+                'vsrc.su':         { url: 'https://vsrc.su/embed/{type}/{id}', needsType: true },
+                
+                // ICU specific (often requires specific suffix for TV to avoid errors)
+                'vidsrc.icu':      { url: 'https://vidsrc.icu/embed/{type}/{id}', needsType: true, tvSuffix: '/1-1' },
+                
+                // Superembed
+                'superembed':      { url: 'https://multiembed.mov/directstream.php?video_id={id}', needsType: false }
             };
 
             // --- DOM ELEMENT REFERENCES ---
@@ -235,7 +245,6 @@
              * @param {string} message - The message text to display.
              */
             const showStatus = (type, message) => {
-                // Hide all status messages first
                 loadingIndicator.style.display = 'none';
                 errorMessage.style.display = 'none';
                 
@@ -264,6 +273,8 @@
                 
                 if (source.needsType) {
                     url = url.replace('{type}', type);
+                    
+                    // Specific logic for vidsrc.icu TV shows if a suffix is defined
                     if (type === 'tv' && source.tvSuffix) {
                         url += source.tvSuffix;
                     }
@@ -281,7 +292,7 @@
                 
                 const videoId = idInput.value.trim();
                 if (!videoId) {
-                    showStatus('error', 'Please enter a valid Video ID or Anime Name.');
+                    showStatus('error', 'Please enter a valid Video ID.');
                     return;
                 }
                 
@@ -297,13 +308,15 @@
                     return;
                 }
                 
+                console.log("Loading URL:", embedUrl); // Debugging aid
+
                 const iframe = document.createElement('iframe');
                 iframe.src = embedUrl;
                 iframe.setAttribute('allowfullscreen', '');
                 iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
 
                 iframe.onload = () => {
-                    loadingIndicator.style.display = 'none'; // Hide loading only on success
+                    loadingIndicator.style.display = 'none';
                 };
 
                 iframe.onerror = () => {
@@ -324,7 +337,7 @@
                 domainSelect.value = savedDomain;
             }
 
-            // Set the initial UI state based on the selected (or default) domain
+            // Set the initial UI state
             updateUiForDomain();
 
             // --- EVENT LISTENERS ---
@@ -332,5 +345,7 @@
             videoForm.addEventListener('submit', handleFormSubmit);
         });
     </script>
+
+
 </body>
 </html>
